@@ -19,17 +19,19 @@ export default function ScrollyHero() {
   const [loadedCount, setLoadedCount] = useState(0);
   const [isPreloaderFaded, setIsPreloaderFaded] = useState(false);
 
+  // Total frames in your directory
   const frameCount = 244;
   const preloadedImagesRef = useRef<HTMLImageElement[]>([]);
-  const frameObjRef = useRef({ frame: 1 });
 
-  // Get image source by index
+  // Set starting frame explicitly to 0 (Array base index 0)
+  const frameObjRef = useRef({ frame: 0 });
+
+  // Returns path using zero-padded 1-based naming logic (001 to 244)
   const getFramePath = (index: number) => {
-    // Starts from ezgif-frame-002.png since frame 1 was deleted
-    return `/images/ezgif-frame-${String(index + 1).padStart(3, "0")}.png`;
+    return `/images/ezgif-frame-${String(index).padStart(3, "0")}.png`;
   };
 
-  // Canvas draw helper
+  // Canvas draw helper with aspect-fill letterboxing
   const renderCanvas = (img: HTMLImageElement) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -40,7 +42,6 @@ export default function ScrollyHero() {
     const winH = window.innerHeight;
     const dpr = window.devicePixelRatio || 1;
 
-    // Set high-DPI resolution
     canvas.width = winW * dpr;
     canvas.height = winH * dpr;
     canvas.style.width = `${winW}px`;
@@ -49,8 +50,6 @@ export default function ScrollyHero() {
 
     const imgW = img.width;
     const imgH = img.height;
-
-    // Cover calculation (object-fit: cover equivalent)
     const imgRatio = imgW / imgH;
     const winRatio = winW / winH;
 
@@ -60,11 +59,9 @@ export default function ScrollyHero() {
     let y = 0;
 
     if (winRatio > imgRatio) {
-      // Window is wider than image aspect ratio
       drawH = winW / imgRatio;
       y = (winH - drawH) / 2;
     } else {
-      // Window is taller than image aspect ratio
       drawW = winH * imgRatio;
       x = (winW - drawW) / 2;
     }
@@ -73,7 +70,7 @@ export default function ScrollyHero() {
     ctx.drawImage(img, x, y, drawW, drawH);
   };
 
-  // Preload all 260 images
+  // Preload frames into sequential indices safely
   useEffect(() => {
     let isMounted = true;
     const images: HTMLImageElement[] = [];
@@ -90,19 +87,17 @@ export default function ScrollyHero() {
           setLoadedCount(loaded);
           if (loaded === frameCount) {
             preloadedImagesRef.current = images;
-            // Delay preloader fade out slightly for transition feel
             setTimeout(() => {
               setIsPreloaderFaded(true);
               setTimeout(() => {
                 setLoading(false);
-              }, 1000); // match transition duration
+              }, 800);
             }, 300);
           }
         };
 
         img.onerror = () => {
           if (!isMounted) return;
-          // Count broken frames so load completes
           loaded++;
           setLoadedCount(loaded);
           if (loaded === frameCount) {
@@ -111,7 +106,7 @@ export default function ScrollyHero() {
               setIsPreloaderFaded(true);
               setTimeout(() => {
                 setLoading(false);
-              }, 1000);
+              }, 800);
             }, 300);
           }
         };
@@ -127,52 +122,46 @@ export default function ScrollyHero() {
     };
   }, []);
 
-  // Initialize GSAP Scroll Scrubbing once images are loaded
+  // Initialize GSAP Scroll scrubbing configuration
   useEffect(() => {
     if (loading) return;
 
-    // Draw initial frame (frame 1)
+    // Render initial viewport frame instantly on load
     if (preloadedImagesRef.current[0]) {
       renderCanvas(preloadedImagesRef.current[0]);
     }
 
-    // Scroll resize listener
     const handleResize = () => {
-      const currentFrameIndex = Math.min(Math.floor(frameObjRef.current.frame), frameCount);
-      const img = preloadedImagesRef.current[currentFrameIndex - 1];
-      if (img) {
-        renderCanvas(img);
-      }
+      const currentIdx = Math.max(0, Math.min(frameCount - 1, Math.floor(frameObjRef.current.frame)));
+      const img = preloadedImagesRef.current[currentIdx];
+      if (img) renderCanvas(img);
     };
     window.addEventListener("resize", handleResize);
 
-    // Setup GSAP scroll scrubbing timeline
+    // Using gsap.context maps targets securely and kills timeline overlaps
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: containerRef.current,
           start: "top top",
           end: "bottom bottom",
-          scrub: 1.5,
+          scrub: 1.2,
           pin: true,
-          anticipatePin: 1,
+          invalidateOnRefresh: true, // Recalculates canvas layout measurements if resized
         },
       });
 
-      // Frame animation from 1 to 260 (over a nominal 10s timeline duration)
+      // Animate from index 0 to index 243 directly matching array structures
       tl.to(
         frameObjRef.current,
         {
-          frame: frameCount,
+          frame: frameCount - 1,
           ease: "none",
           duration: 10,
           onUpdate: () => {
-            const currentFrameIndex = Math.min(
-              Math.floor(frameObjRef.current.frame),
-              frameCount
-            );
-            const img = preloadedImagesRef.current[currentFrameIndex - 1];
-            if (img) {
+            const currentIdx = Math.max(0, Math.min(frameCount - 1, Math.floor(frameObjRef.current.frame)));
+            const img = preloadedImagesRef.current[currentIdx];
+            if (img && img.complete) {
               renderCanvas(img);
             }
           },
@@ -180,21 +169,20 @@ export default function ScrollyHero() {
         0
       );
 
-      // Beat 1 (0 to 30% scroll = 0s to 3s nominal)
-      // Card slides up slightly and fades in, then fades out and slides up further
+      // Beat 1 Text Sequence
       tl.fromTo(
         text1Ref.current,
         { opacity: 0, y: 40 },
         { opacity: 1, y: 0, duration: 1.2, ease: "power2.out" },
-        0.2
+        0.5
       );
       tl.to(
         text1Ref.current,
         { opacity: 0, y: -40, duration: 1.2, ease: "power2.in" },
-        2.2
+        2.5
       );
 
-      // Beat 2 (40 to 60% scroll = 4s to 6.5s nominal)
+      // Beat 2 Text Sequence
       tl.fromTo(
         text2Ref.current,
         { opacity: 0, y: 40 },
@@ -204,16 +192,15 @@ export default function ScrollyHero() {
       tl.to(
         text2Ref.current,
         { opacity: 0, y: -40, duration: 1.2, ease: "power2.in" },
-        5.8
+        6.0
       );
 
-      // Beat 3 (80 to 100% scroll = 8s to 10s nominal)
-      // Subtly darken background for readable text on retriever fur
+      // Beat 3 Text Sequence & Final Contrast Screen Overlay
       tl.fromTo(
         overlayRef.current,
         { opacity: 0 },
-        { opacity: 0.45, duration: 1.5, ease: "none" },
-        7.8
+        { opacity: 0.5, duration: 1.5, ease: "none" },
+        7.5
       );
       tl.fromTo(
         text3Ref.current,
@@ -225,42 +212,34 @@ export default function ScrollyHero() {
 
     return () => {
       window.removeEventListener("resize", handleResize);
-      ctx.revert();
+      ctx.revert(); // Secure clean up memory leaks upon unmounting
     };
   }, [loading]);
 
   return (
-    <div className="relative">
+    <div className="relative w-full overflow-x-hidden">
       {/* Preloader Overlay */}
       {loading && (
         <div
-          className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#F9F8F6] transition-all duration-1000 ease-in-out ${
-            isPreloaderFaded ? "opacity-0 pointer-events-none" : "opacity-100"
-          }`}
+          className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#F9F8F6] transition-all duration-1000 ease-in-out ${isPreloaderFaded ? "opacity-0 pointer-events-none" : "opacity-100"
+            }`}
         >
           <div className="flex flex-col items-center max-w-sm px-6 text-center">
-            {/* Pulsating Icon */}
             <div className="w-16 h-16 rounded-2xl bg-clinic-teal flex items-center justify-center text-white mb-6 animate-pulse shadow-lg shadow-clinic-teal/20">
               <HeartPulse className="w-10 h-10" />
             </div>
-
-            {/* Serif Title */}
             <h1 className="font-serif font-bold text-4xl text-navy-800 mb-2">
               Vet<span className="text-clinic-teal">Care</span>
             </h1>
             <p className="text-navy-800/60 font-sans text-sm tracking-wide mb-8">
               PREMIUM SCROLLYTELLING
             </p>
-
-            {/* Custom Sleek Loader */}
             <div className="w-64 h-1.5 bg-warm-300 rounded-full overflow-hidden mb-4 relative">
               <div
                 className="h-full bg-clinic-teal transition-all duration-150 ease-out"
                 style={{ width: `${(loadedCount / frameCount) * 100}%` }}
               ></div>
             </div>
-
-            {/* Counter */}
             <div className="text-lg font-serif font-bold text-navy-800">
               {Math.round((loadedCount / frameCount) * 100)}%
             </div>
@@ -274,16 +253,13 @@ export default function ScrollyHero() {
       {/* Hero Scroll Container */}
       <div ref={containerRef} className="relative h-[600vh] w-full bg-warm-100">
         <div className="sticky top-0 h-screen w-full overflow-hidden">
-          {/* Canvas for rendering frame sequence */}
           <canvas ref={canvasRef} className="block w-full h-full object-cover" />
-
-          {/* Dark overlay that fades in near the end for readability */}
           <div
             ref={overlayRef}
             className="absolute inset-0 bg-navy-900 pointer-events-none opacity-0"
           />
 
-          {/* Beat 1 Text: Bottom Left Glass Card */}
+          {/* Beat 1 Text */}
           <div
             ref={text1Ref}
             className="absolute bottom-12 left-6 md:left-16 lg:left-24 max-w-md p-8 rounded-2xl glass-card shadow-lg opacity-0"
@@ -297,7 +273,7 @@ export default function ScrollyHero() {
             <div className="w-12 h-1 bg-clinic-teal mt-4 rounded-full"></div>
           </div>
 
-          {/* Beat 2 Text: Bottom Right Glass Card */}
+          {/* Beat 2 Text */}
           <div
             ref={text2Ref}
             className="absolute bottom-12 right-6 md:right-16 lg:right-24 max-w-md p-8 rounded-2xl glass-card shadow-lg text-right opacity-0"
@@ -311,7 +287,7 @@ export default function ScrollyHero() {
             <div className="w-12 h-1 bg-clinic-blue ml-auto mt-4 rounded-full"></div>
           </div>
 
-          {/* Beat 3 Text: Centered White Text & Button */}
+          {/* Beat 3 Text */}
           <div
             ref={text3Ref}
             className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 pointer-events-auto opacity-0"
