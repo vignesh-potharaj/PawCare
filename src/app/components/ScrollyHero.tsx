@@ -139,28 +139,33 @@ export default function ScrollyHero() {
     window.addEventListener("resize", handleResize);
 
     // Using gsap.context maps targets securely and kills timeline overlaps
+    // Find the GSAP timeline block inside your ScrollyHero component and replace it:
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({
         scrollTrigger: {
           trigger: containerRef.current,
           start: "top top",
-          end: "bottom bottom",
-          scrub: 1.2,
+          end: "+=5000",
+          scrub: 1,
           pin: true,
-          invalidateOnRefresh: true, // Recalculates canvas layout measurements if resized
+          invalidateOnRefresh: true,
         },
       });
 
-      // Animate from index 0 to index 243 directly matching array structures
+      // Animate from frame index 1 directly to the total frame count
       tl.to(
         frameObjRef.current,
         {
-          frame: frameCount - 1,
+          frame: frameCount,
           ease: "none",
           duration: 10,
           onUpdate: () => {
-            const currentIdx = Math.max(0, Math.min(frameCount - 1, Math.floor(frameObjRef.current.frame)));
-            const img = preloadedImagesRef.current[currentIdx];
+            // Clamp between 1 and 244 to strictly match your folder contents
+            const currentFrameIndex = Math.max(1, Math.min(frameCount, Math.floor(frameObjRef.current.frame)));
+
+            // Array base index is currentFrameIndex - 1
+            const img = preloadedImagesRef.current[currentFrameIndex - 1];
+
             if (img && img.complete) {
               renderCanvas(img);
             }
@@ -169,47 +174,16 @@ export default function ScrollyHero() {
         0
       );
 
-      // Beat 1 Text Sequence
-      tl.fromTo(
-        text1Ref.current,
-        { opacity: 0, y: 40 },
-        { opacity: 1, y: 0, duration: 1.2, ease: "power2.out" },
-        0.5
-      );
-      tl.to(
-        text1Ref.current,
-        { opacity: 0, y: -40, duration: 1.2, ease: "power2.in" },
-        2.5
-      );
+      // Text Beat Timings (Unchanged)
+      tl.fromTo(text1Ref.current, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 1.2, ease: "power2.out" }, 0.5);
+      tl.to(text1Ref.current, { opacity: 0, y: -40, duration: 1.2, ease: "power2.in" }, 2.5);
 
-      // Beat 2 Text Sequence
-      tl.fromTo(
-        text2Ref.current,
-        { opacity: 0, y: 40 },
-        { opacity: 1, y: 0, duration: 1.2, ease: "power2.out" },
-        4.0
-      );
-      tl.to(
-        text2Ref.current,
-        { opacity: 0, y: -40, duration: 1.2, ease: "power2.in" },
-        6.0
-      );
+      tl.fromTo(text2Ref.current, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 1.2, ease: "power2.out" }, 4.0);
+      tl.to(text2Ref.current, { opacity: 0, y: -40, duration: 1.2, ease: "power2.in" }, 6.0);
 
-      // Beat 3 Text Sequence & Final Contrast Screen Overlay
-      tl.fromTo(
-        overlayRef.current,
-        { opacity: 0 },
-        { opacity: 0.5, duration: 1.5, ease: "none" },
-        7.5
-      );
-      tl.fromTo(
-        text3Ref.current,
-        { opacity: 0, y: 50, scale: 0.95 },
-        { opacity: 1, y: 0, scale: 1, duration: 1.8, ease: "power3.out" },
-        8.0
-      );
+      tl.fromTo(overlayRef.current, { opacity: 0 }, { opacity: 0.5, duration: 1.5, ease: "none" }, 7.5);
+      tl.fromTo(text3Ref.current, { opacity: 0, y: 50, scale: 0.95 }, { opacity: 1, y: 0, scale: 1, duration: 1.8, ease: "power3.out" }, 8.0);
     }, containerRef);
-
     return () => {
       window.removeEventListener("resize", handleResize);
       ctx.revert(); // Secure clean up memory leaks upon unmounting
@@ -251,8 +225,8 @@ export default function ScrollyHero() {
       )}
 
       {/* Hero Scroll Container */}
-      <div ref={containerRef} className="relative h-[600vh] w-full bg-warm-100">
-        <div className="sticky top-0 h-screen w-full overflow-hidden">
+      <div ref={containerRef} className="relative w-full bg-warm-100">
+        <div className="h-screen w-full overflow-hidden">
           <canvas ref={canvasRef} className="block w-full h-full object-cover" />
           <div
             ref={overlayRef}
@@ -310,4 +284,4 @@ export default function ScrollyHero() {
       </div>
     </div>
   );
-}
+} 
