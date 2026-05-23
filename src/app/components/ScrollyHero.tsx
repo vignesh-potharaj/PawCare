@@ -7,7 +7,14 @@ import { HeartPulse, ArrowRight } from "lucide-react";
 
 gsap.registerPlugin(ScrollTrigger);
 
-export default function ScrollyHero() {
+interface ScrollyHeroProps {
+  /** Ref to the real navbar logo <a> element for fly-to animation target */
+  navLogoRef: React.RefObject<HTMLAnchorElement | null>;
+  /** Callback to reveal the real navbar logo after overlay unmounts */
+  onPreloaderDone: () => void;
+}
+
+export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHeroProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const text1Ref = useRef<HTMLDivElement>(null);
@@ -15,9 +22,12 @@ export default function ScrollyHero() {
   const text3Ref = useRef<HTMLDivElement>(null);
   const overlayRef = useRef<HTMLDivElement>(null);
 
+  // Preloader refs
+  const preloaderRef = useRef<HTMLDivElement>(null);
+  const heroLogoRef = useRef<HTMLDivElement>(null);
+
   const [loading, setLoading] = useState(true);
-  const [loadedCount, setLoadedCount] = useState(0);
-  const [isPreloaderFaded, setIsPreloaderFaded] = useState(false);
+  const [framesLoaded, setFramesLoaded] = useState(false);
 
   // Total frames in your directory
   const frameCount = 244;
@@ -76,41 +86,21 @@ export default function ScrollyHero() {
     const images: HTMLImageElement[] = [];
     let loaded = 0;
 
+    const onFrameReady = () => {
+      if (!isMounted) return;
+      loaded++;
+      if (loaded === frameCount) {
+        preloadedImagesRef.current = images;
+        setFramesLoaded(true);
+      }
+    };
+
     const preloadImages = () => {
       for (let i = 1; i <= frameCount; i++) {
         const img = new Image();
         img.src = getFramePath(i);
-
-        img.onload = () => {
-          if (!isMounted) return;
-          loaded++;
-          setLoadedCount(loaded);
-          if (loaded === frameCount) {
-            preloadedImagesRef.current = images;
-            setTimeout(() => {
-              setIsPreloaderFaded(true);
-              setTimeout(() => {
-                setLoading(false);
-              }, 800);
-            }, 300);
-          }
-        };
-
-        img.onerror = () => {
-          if (!isMounted) return;
-          loaded++;
-          setLoadedCount(loaded);
-          if (loaded === frameCount) {
-            preloadedImagesRef.current = images;
-            setTimeout(() => {
-              setIsPreloaderFaded(true);
-              setTimeout(() => {
-                setLoading(false);
-              }, 800);
-            }, 300);
-          }
-        };
-
+        img.onload = onFrameReady;
+        img.onerror = onFrameReady;
         images.push(img);
       }
     };
@@ -121,6 +111,64 @@ export default function ScrollyHero() {
       isMounted = false;
     };
   }, []);
+
+  // Phase 2: Fly-to-navbar animation (triggers when all frames are loaded)
+  useEffect(() => {
+    if (!framesLoaded) return;
+
+    const heroLogo = heroLogoRef.current;
+    const navLogo = navLogoRef.current;
+    const preloader = preloaderRef.current;
+    if (!heroLogo || !navLogo || !preloader) {
+      // Fallback: if refs are missing, just unmount
+      setLoading(false);
+      onPreloaderDone();
+      return;
+    }
+
+    const ctx = gsap.context(() => {
+      const heroRect = heroLogo.getBoundingClientRect();
+      const navRect = navLogo.getBoundingClientRect();
+
+      // Calculate the scale ratio (nav logo size / hero logo size)
+      const scaleTarget = navRect.width / heroRect.width;
+
+      // Calculate translation deltas (center-to-center, then adjust for scale)
+      const heroCenterX = heroRect.left + heroRect.width / 2;
+      const heroCenterY = heroRect.top + heroRect.height / 2;
+      const navCenterX = navRect.left + navRect.width / 2;
+      const navCenterY = navRect.top + navRect.height / 2;
+
+      const deltaX = navCenterX - heroCenterX;
+      const deltaY = navCenterY - heroCenterY;
+
+      // Make overlay non-interactive during fly phase
+      preloader.style.pointerEvents = "none";
+
+      gsap.to(heroLogo, {
+        x: deltaX,
+        y: deltaY,
+        scale: scaleTarget,
+        duration: 1.2,
+        ease: "expo.inOut",
+        onComplete: () => {
+          // Fade out the overlay background
+          gsap.to(preloader, {
+            opacity: 0,
+            duration: 0.3,
+            onComplete: () => {
+              setLoading(false);
+              onPreloaderDone();
+            },
+          });
+        },
+      });
+    });
+
+    return () => {
+      ctx.revert();
+    };
+  }, [framesLoaded, navLogoRef, onPreloaderDone]);
 
   // Initialize GSAP Scroll scrubbing configuration
   useEffect(() => {
@@ -190,36 +238,41 @@ export default function ScrollyHero() {
     };
   }, [loading]);
 
+  // Compute initial scale for oversized logo to occupy ~80vw
+  // The logo group (icon + text) is roughly 300px at natural size on desktop.
+  // We scale it so it fills ~80vw.
+  const getInitialScale = () => {
+    if (typeof window === "undefined") return 3;
+    const targetWidth = window.innerWidth * 0.8;
+    // Natural logo group width is approximately 280px (icon 96px + gap + text)
+    const naturalWidth = 280;
+    return Math.min(targetWidth / naturalWidth, 5);
+  };
+
   return (
     <div className="relative w-full overflow-x-hidden">
-      {/* Preloader Overlay */}
+      {/* Phase 1 & 2: Logo Preloader Overlay */}
       {loading && (
         <div
-          className={`fixed inset-0 z-50 flex flex-col items-center justify-center bg-[#F9F8F6] transition-all duration-1000 ease-in-out ${isPreloaderFaded ? "opacity-0 pointer-events-none" : "opacity-100"
-            }`}
+          ref={preloaderRef}
+          className="fixed inset-0 flex items-center justify-center bg-[#F9F8F6]"
+          style={{ zIndex: 60 }}
         >
-          <div className="flex flex-col items-center max-w-sm px-6 text-center">
-            <div className="w-16 h-16 rounded-2xl bg-clinic-teal flex items-center justify-center text-white mb-6 animate-pulse shadow-lg shadow-clinic-teal/20">
-              <HeartPulse className="w-10 h-10" />
+          <div
+            ref={heroLogoRef}
+            className="flex items-center gap-4"
+            style={{
+              transform: `scale(${getInitialScale()})`,
+              transformOrigin: "center center",
+              willChange: "transform",
+            }}
+          >
+            <div className="w-24 h-24 rounded-2xl bg-clinic-teal flex items-center justify-center text-white shadow-lg shadow-clinic-teal/20">
+              <HeartPulse className="w-14 h-14" />
             </div>
-            <h1 className="font-serif font-bold text-4xl text-navy-800 mb-2">
+            <span className="font-serif font-bold text-5xl tracking-tight text-navy-800 whitespace-nowrap">
               Vet<span className="text-clinic-teal">Care</span>
-            </h1>
-            <p className="text-navy-800/60 font-sans text-sm tracking-wide mb-8">
-              PREMIUM SCROLLYTELLING
-            </p>
-            <div className="w-64 h-1.5 bg-warm-300 rounded-full overflow-hidden mb-4 relative">
-              <div
-                className="h-full bg-clinic-teal transition-all duration-150 ease-out"
-                style={{ width: `${(loadedCount / frameCount) * 100}%` }}
-              ></div>
-            </div>
-            <div className="text-lg font-serif font-bold text-navy-800">
-              {Math.round((loadedCount / frameCount) * 100)}%
-            </div>
-            <p className="text-xs text-navy-800/40 mt-1 font-sans">
-              Caching cinematic frames for smooth playback...
-            </p>
+            </span>
           </div>
         </div>
       )}
@@ -284,4 +337,4 @@ export default function ScrollyHero() {
       </div>
     </div>
   );
-} 
+}

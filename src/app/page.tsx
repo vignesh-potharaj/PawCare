@@ -1,3 +1,6 @@
+"use client";
+
+import { useRef, useState, useCallback } from "react";
 import Navbar from "./components/Navbar";
 import ScrollyHero from "./components/ScrollyHero";
 import Services from "./components/Services";
@@ -5,15 +8,25 @@ import About from "./components/About";
 import Footer from "./components/Footer";
 
 export default function Home() {
+  const navLogoRef = useRef<HTMLAnchorElement>(null);
+  const [navLogoVisible, setNavLogoVisible] = useState(false);
+
+  const handlePreloaderDone = useCallback(() => {
+    setNavLogoVisible(true);
+  }, []);
+
   return (
     // Explicitly hide overflow-x here to prevent layout shifting during pin execution
     <main className="relative min-h-screen w-full overflow-x-hidden bg-[#F9F8F6]">
       {/* Dynamic Header with forced high z-index stacking */}
-      <Navbar />
+      <Navbar ref={navLogoRef} logoVisible={navLogoVisible} />
 
       {/* Hero Section with Pinned Scroll Scrubbing */}
       <div className="relative w-full z-10">
-        <ScrollyHero />
+        <ScrollyHero
+          navLogoRef={navLogoRef}
+          onPreloaderDone={handlePreloaderDone}
+        />
       </div>
 
       {/* Subsequent Content Sections wrapped to securely stack over/under pinning contexts */}
