@@ -3,25 +3,49 @@
 @tailwind utilities;
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+  --background: #F9F8F6;
+  --foreground: #1A202C;
 }
 
 body {
   color: var(--foreground);
   background: var(--background);
-  font-family: Arial, Helvetica, sans-serif;
+  overflow-x: hidden;
 }
 
-@layer utilities {
-  .text-balance {
-    text-wrap: balance;
-  }
+/* Custom scrollbar styling */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: #F3F1ED;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #D3CDBE;
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #A3AECA;
+}
+
+/* Glassmorphism helpers */
+.glass-nav {
+  background: rgba(249, 248, 246, 0.75);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid rgba(26, 32, 44, 0.05);
+}
+
+.glass-card {
+  background: rgba(253, 253, 253, 0.8);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(211, 205, 190, 0.4);
+}
+
+/* Custom smooth transition utilities */
+.transition-smooth {
+  transition: all 0.5s cubic-bezier(0.16, 1, 0.3, 1);
 }
