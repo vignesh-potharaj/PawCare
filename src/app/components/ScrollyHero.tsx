@@ -19,13 +19,14 @@ export default function ScrollyHero() {
   const [loadedCount, setLoadedCount] = useState(0);
   const [isPreloaderFaded, setIsPreloaderFaded] = useState(false);
 
-  const frameCount = 260;
+  const frameCount = 244;
   const preloadedImagesRef = useRef<HTMLImageElement[]>([]);
   const frameObjRef = useRef({ frame: 1 });
 
   // Get image source by index
   const getFramePath = (index: number) => {
-    return `/images/ezgif-frame-${String(index).padStart(3, "0")}.png`;
+    // Starts from ezgif-frame-002.png since frame 1 was deleted
+    return `/images/ezgif-frame-${String(index + 1).padStart(3, "0")}.png`;
   };
 
   // Canvas draw helper
@@ -152,7 +153,7 @@ export default function ScrollyHero() {
           trigger: containerRef.current,
           start: "top top",
           end: "bottom bottom",
-          scrub: 0.6,
+          scrub: 1.5,
           pin: true,
           anticipatePin: 1,
         },
@@ -271,7 +272,7 @@ export default function ScrollyHero() {
       )}
 
       {/* Hero Scroll Container */}
-      <div ref={containerRef} className="relative h-[400vh] w-full bg-warm-100">
+      <div ref={containerRef} className="relative h-[600vh] w-full bg-warm-100">
         <div className="sticky top-0 h-screen w-full overflow-hidden">
           {/* Canvas for rendering frame sequence */}
           <canvas ref={canvasRef} className="block w-full h-full object-cover" />
