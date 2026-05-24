@@ -92,7 +92,7 @@ export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHero
 
     const winW = window.innerWidth;
     const winH = window.innerHeight;
-    
+
     // Cap dpr at 2 to avoid memory overhead and GPU stuttering
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
 
@@ -284,7 +284,7 @@ export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHero
       {loading && (
         <div
           ref={preloaderRef}
-          className="fixed inset-0 flex items-center justify-center bg-white dark:bg-black"
+          className="fixed inset-0 flex items-center justify-center bg-white dark:bg-cream"
           style={{ zIndex: 60 }}
         >
           <div
