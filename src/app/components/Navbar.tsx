@@ -43,13 +43,11 @@ const Navbar = forwardRef<HTMLAnchorElement, NavbarProps>(
 
     return (
       <nav
-        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out ${
-          isVisible ? "translate-y-0" : "-translate-y-full"
-        } ${
-          isScrolled
+        className={`fixed top-0 left-0 right-0 z-50 transition-all duration-500 ease-in-out ${isVisible ? "translate-y-0" : "-translate-y-full"
+          } ${isScrolled
             ? "glass-nav py-4 shadow-sm"
-            : "bg-transparent py-6"
-        }`}
+            : "bg-transparent py-2"
+          }`}
       >
         <div className="max-w-7xl mx-auto px-6 md:px-12 flex items-center justify-between">
           {/* Logo */}
@@ -65,7 +63,7 @@ const Navbar = forwardRef<HTMLAnchorElement, NavbarProps>(
             <img
               src="/images/logo.png"
               alt="PawJoy Logo"
-              className="h-10 w-auto object-contain"
+              className="h-[60px] w-auto object-contain"
             />
           </a>
 
@@ -105,9 +103,8 @@ const Navbar = forwardRef<HTMLAnchorElement, NavbarProps>(
 
         {/* Mobile Drawer */}
         <div
-          className={`fixed inset-0 top-[72px] bg-warm-100 z-40 flex flex-col px-8 py-12 gap-8 md:hidden transition-transform duration-500 ease-in-out shadow-inner ${
-            mobileMenuOpen ? "translate-x-0" : "translate-x-full"
-          }`}
+          className={`fixed inset-0 top-[72px] bg-warm-100 z-40 flex flex-col px-8 py-12 gap-8 md:hidden transition-transform duration-500 ease-in-out shadow-inner ${mobileMenuOpen ? "translate-x-0" : "translate-x-full"
+            }`}
         >
           <div className="flex flex-col gap-6">
             {navLinks.map((link) => (

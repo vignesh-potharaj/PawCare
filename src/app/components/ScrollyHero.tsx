@@ -28,7 +28,7 @@ export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHero
 
   const [loading, setLoading] = useState(true);
   const [framesLoaded, setFramesLoaded] = useState(false);
-  const [logoScale, setLogoScale] = useState(3);
+  const logoScale = 3;
   const canvasDimensionsRef = useRef({ width: 0, height: 0 });
 
   // Total frames in your directory
@@ -37,13 +37,6 @@ export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHero
 
   // Set starting frame explicitly to 0 (Array base index 0)
   const frameObjRef = useRef({ frame: 0 });
-
-  // Calculate preloader logo scale after mounting to avoid hydration mismatch
-  useEffect(() => {
-    const targetWidth = window.innerWidth * 0.8;
-    const naturalWidth = 280;
-    setLogoScale(Math.min(targetWidth / naturalWidth, 5));
-  }, []);
 
   // Returns path using zero-padded 1-based naming logic (001 to 244)
   const getFramePath = (index: number) => {
@@ -172,7 +165,7 @@ export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHero
       const navRect = navLogo.getBoundingClientRect();
 
       // Calculate the scale ratio (nav logo size / hero logo size)
-      const scaleTarget = navRect.width / heroRect.width;
+      const scaleTarget = logoScale * (navRect.width / heroRect.width);
 
       // Calculate translation deltas (center-to-center, then adjust for scale)
       const heroCenterX = heroRect.left + heroRect.width / 2;
@@ -273,7 +266,7 @@ export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHero
       tl.to(text2Ref.current, { opacity: 0, y: -40, duration: 1.2, ease: "power2.in" }, 6.0);
 
       tl.fromTo(overlayRef.current, { opacity: 0 }, { opacity: 0.5, duration: 1.5, ease: "none" }, 7.5);
-      tl.fromTo(text3Ref.current, { opacity: 0, y: 50, scale: 0.95 }, { opacity: 1, y: 0, scale: 1, duration: 1.8, ease: "power3.out" }, 8.0);
+      tl.fromTo(text3Ref.current, { opacity: 0, y: 50 }, { opacity: 1, y: 0, duration: 1.8, ease: "power3.out" }, 8.0);
     }, containerRef);
 
     return () => {
@@ -291,12 +284,15 @@ export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHero
       {loading && (
         <div
           ref={preloaderRef}
-          className="fixed inset-0 flex items-center justify-center bg-[#F9F8F6]"
+          className="fixed inset-0 flex items-center justify-center bg-white dark:bg-black"
           style={{ zIndex: 60 }}
         >
           <div
             ref={heroLogoRef}
+            className="w-[280px] h-[90px]"
             style={{
+              width: "280px",
+              height: "90px",
               transform: `scale(${logoScale})`,
               transformOrigin: "center center",
               willChange: "transform",
@@ -305,7 +301,7 @@ export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHero
             <img
               src="/images/logo.png"
               alt="PawJoy Logo"
-              className="w-[280px] h-auto object-contain"
+              className="w-full h-full object-contain"
             />
           </div>
         </div>
