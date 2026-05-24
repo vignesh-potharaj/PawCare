@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, forwardRef } from "react";
-import { HeartPulse, Menu, X } from "lucide-react";
+import { Menu, X } from "lucide-react";
 
 interface NavbarProps {
   /** Controls logo visibility — starts hidden (false) during preloader, revealed (true) after fly animation */
@@ -56,18 +56,17 @@ const Navbar = forwardRef<HTMLAnchorElement, NavbarProps>(
           <a
             ref={ref}
             href="#"
-            className="flex items-center gap-2 text-navy-800 hover:opacity-90 transition-opacity"
+            className="flex items-center hover:opacity-90 transition-opacity"
             style={{
               opacity: logoVisible ? 1 : 0,
               transition: "opacity 0.15s ease",
             }}
           >
-            <div className="w-10 h-10 rounded-xl bg-clinic-teal flex items-center justify-center text-white shadow-md shadow-clinic-teal/20">
-              <HeartPulse className="w-6 h-6" />
-            </div>
-            <span className="font-serif font-bold text-2xl tracking-tight text-navy-800">
-              Vet<span className="text-clinic-teal">Care</span>
-            </span>
+            <img
+              src="/images/logo.png"
+              alt="PawJoy Logo"
+              className="h-10 w-auto object-contain"
+            />
           </a>
 
           {/* Desktop navigation */}

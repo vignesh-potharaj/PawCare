@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { HeartPulse, Phone, Mail, MapPin, Clock, Calendar, CheckCircle2 } from "lucide-react";
+import { Phone, Mail, MapPin, Clock, Calendar, CheckCircle2 } from "lucide-react";
 
 export default function Footer() {
   const [formSubmitted, setFormSubmitted] = useState(false);
@@ -22,13 +22,12 @@ export default function Footer() {
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 pb-16 border-b border-navy-800 items-start">
           {/* Brand and contact info */}
           <div className="lg:col-span-6 flex flex-col gap-6">
-            <a href="#" className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-xl bg-clinic-teal flex items-center justify-center text-white shadow-md shadow-clinic-teal/20">
-                <HeartPulse className="w-6 h-6" />
-              </div>
-              <span className="font-serif font-bold text-2xl tracking-tight text-white">
-                Vet<span className="text-clinic-teal">Care</span>
-              </span>
+            <a href="#" className="flex items-center">
+              <img
+                src="/images/logo.png"
+                alt="PawJoy Logo"
+                className="h-10 w-auto object-contain"
+              />
             </a>
             <p className="text-navy-200/70 font-sans text-base max-w-md leading-relaxed">
               We provide empathetic care, advanced medical services, and a warm, inviting environment for your beloved pets. Reach out to book your visit or consultation today.
@@ -53,8 +52,8 @@ export default function Footer() {
                 </div>
                 <div>
                   <p className="text-xs text-navy-200/50 uppercase tracking-wider font-sans">General Inquiries</p>
-                  <a href="mailto:hello@vetcareclinic.com" className="text-base text-white hover:text-clinic-teal transition-colors">
-                    hello@vetcareclinic.com
+                  <a href="mailto:hello@pawjoyclinic.com" className="text-base text-white hover:text-clinic-teal transition-colors">
+                    hello@pawjoyclinic.com
                   </a>
                 </div>
               </div>
@@ -123,7 +122,7 @@ export default function Footer() {
         {/* Lower Footer: Navigation & Legal */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 items-center text-xs text-navy-200/50 font-sans">
           <div>
-            <p>© {new Date().getFullYear()} VetCare Clinic. All rights reserved. Empathy & Excellence in Veterinary Science.</p>
+            <p>© {new Date().getFullYear()} PawJoy Clinic. All rights reserved. Empathy & Excellence in Veterinary Science.</p>
           </div>
           <div className="flex gap-6 md:justify-end">
             <a href="#services" className="hover:text-clinic-teal transition-colors">Services</a>

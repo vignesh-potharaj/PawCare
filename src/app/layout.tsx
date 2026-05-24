@@ -3,7 +3,7 @@ import { inter, merriweather } from "./fonts";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "VetCare | Premium, Compassionate Veterinary Clinic",
+  title: "PawJoy | Premium, Compassionate Veterinary Clinic",
   description: "Experience premium scrollytelling for a world-class veterinary clinic. Empathy, trust, and advanced care for your best friends.",
 };
 

@@ -1,9 +1,9 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import { gsap } from "gsap";
 import { ScrollTrigger } from "gsap/ScrollTrigger";
-import { HeartPulse, ArrowRight } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 
 gsap.registerPlugin(ScrollTrigger);
 
@@ -28,6 +28,8 @@ export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHero
 
   const [loading, setLoading] = useState(true);
   const [framesLoaded, setFramesLoaded] = useState(false);
+  const [logoScale, setLogoScale] = useState(3);
+  const canvasDimensionsRef = useRef({ width: 0, height: 0 });
 
   // Total frames in your directory
   const frameCount = 244;
@@ -36,27 +38,27 @@ export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHero
   // Set starting frame explicitly to 0 (Array base index 0)
   const frameObjRef = useRef({ frame: 0 });
 
+  // Calculate preloader logo scale after mounting to avoid hydration mismatch
+  useEffect(() => {
+    const targetWidth = window.innerWidth * 0.8;
+    const naturalWidth = 280;
+    setLogoScale(Math.min(targetWidth / naturalWidth, 5));
+  }, []);
+
   // Returns path using zero-padded 1-based naming logic (001 to 244)
   const getFramePath = (index: number) => {
     return `/images/ezgif-frame-${String(index).padStart(3, "0")}.png`;
   };
 
-  // Canvas draw helper with aspect-fill letterboxing
-  const renderCanvas = (img: HTMLImageElement) => {
+  // Canvas draw helper with aspect-fill and smart mobile centering
+  const drawFrameToCanvas = useCallback((img: HTMLImageElement) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const winW = window.innerWidth;
-    const winH = window.innerHeight;
-    const dpr = window.devicePixelRatio || 1;
-
-    canvas.width = winW * dpr;
-    canvas.height = winH * dpr;
-    canvas.style.width = `${winW}px`;
-    canvas.style.height = `${winH}px`;
-    ctx.scale(dpr, dpr);
+    const { width: winW, height: winH } = canvasDimensionsRef.current;
+    if (winW === 0 || winH === 0) return;
 
     const imgW = img.width;
     const imgH = img.height;
@@ -68,17 +70,56 @@ export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHero
     let x = 0;
     let y = 0;
 
-    if (winRatio > imgRatio) {
+    if (winRatio < imgRatio) {
+      // Narrow screens (mobile portrait): scale down to fit width to keep veterinary assistants visible
+      drawW = winW;
       drawH = winW / imgRatio;
+      x = 0;
       y = (winH - drawH) / 2;
     } else {
+      // Wide screens: standard cover logic
+      drawH = winH;
       drawW = winH * imgRatio;
       x = (winW - drawW) / 2;
+      y = 0;
     }
 
-    ctx.clearRect(0, 0, winW, winH);
+    // Fill canvas background with theme's warm cream first to avoid flickering/white letterbox bars
+    ctx.fillStyle = "#F9F8F6";
+    ctx.fillRect(0, 0, winW, winH);
     ctx.drawImage(img, x, y, drawW, drawH);
-  };
+  }, []);
+
+  // Resize canvas dimensions and scale context once, avoiding layout thrashing
+  const resizeCanvasDimensions = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const winW = window.innerWidth;
+    const winH = window.innerHeight;
+    
+    // Cap dpr at 2 to avoid memory overhead and GPU stuttering
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+    canvas.width = winW * dpr;
+    canvas.height = winH * dpr;
+    canvas.style.width = `${winW}px`;
+    canvas.style.height = `${winH}px`;
+    ctx.scale(dpr, dpr);
+
+    canvasDimensionsRef.current = { width: winW, height: winH };
+
+    // Redraw active frame
+    const currentFrameIndex = Math.max(1, Math.min(frameCount, Math.floor(frameObjRef.current.frame)));
+    const img = preloadedImagesRef.current[currentFrameIndex - 1];
+    if (img && img.complete) {
+      drawFrameToCanvas(img);
+    } else if (preloadedImagesRef.current[0]) {
+      drawFrameToCanvas(preloadedImagesRef.current[0]);
+    }
+  }, [drawFrameToCanvas]);
 
   // Preload frames into sequential indices safely
   useEffect(() => {
@@ -174,20 +215,22 @@ export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHero
   useEffect(() => {
     if (loading) return;
 
-    // Render initial viewport frame instantly on load
-    if (preloadedImagesRef.current[0]) {
-      renderCanvas(preloadedImagesRef.current[0]);
-    }
+    // Set initial size and render first frame
+    resizeCanvasDimensions();
 
+    // Use requestAnimationFrame for throttled resize handler to prevent stutters
+    let resizeTimeout: number | null = null;
     const handleResize = () => {
-      const currentIdx = Math.max(0, Math.min(frameCount - 1, Math.floor(frameObjRef.current.frame)));
-      const img = preloadedImagesRef.current[currentIdx];
-      if (img) renderCanvas(img);
+      if (resizeTimeout) {
+        window.cancelAnimationFrame(resizeTimeout);
+      }
+      resizeTimeout = window.requestAnimationFrame(() => {
+        resizeCanvasDimensions();
+      });
     };
     window.addEventListener("resize", handleResize);
 
     // Using gsap.context maps targets securely and kills timeline overlaps
-    // Find the GSAP timeline block inside your ScrollyHero component and replace it:
     const ctx = gsap.context(() => {
       const tl = gsap.timeline({
         scrollTrigger: {
@@ -208,21 +251,21 @@ export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHero
           ease: "none",
           duration: 10,
           onUpdate: () => {
-            // Clamp between 1 and 244 to strictly match your folder contents
+            // Clamp between 1 and 244 to strictly match folder contents
             const currentFrameIndex = Math.max(1, Math.min(frameCount, Math.floor(frameObjRef.current.frame)));
 
             // Array base index is currentFrameIndex - 1
             const img = preloadedImagesRef.current[currentFrameIndex - 1];
 
             if (img && img.complete) {
-              renderCanvas(img);
+              drawFrameToCanvas(img);
             }
           },
         },
         0
       );
 
-      // Text Beat Timings (Unchanged)
+      // Text Beat Timings
       tl.fromTo(text1Ref.current, { opacity: 0, y: 40 }, { opacity: 1, y: 0, duration: 1.2, ease: "power2.out" }, 0.5);
       tl.to(text1Ref.current, { opacity: 0, y: -40, duration: 1.2, ease: "power2.in" }, 2.5);
 
@@ -232,22 +275,15 @@ export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHero
       tl.fromTo(overlayRef.current, { opacity: 0 }, { opacity: 0.5, duration: 1.5, ease: "none" }, 7.5);
       tl.fromTo(text3Ref.current, { opacity: 0, y: 50, scale: 0.95 }, { opacity: 1, y: 0, scale: 1, duration: 1.8, ease: "power3.out" }, 8.0);
     }, containerRef);
+
     return () => {
       window.removeEventListener("resize", handleResize);
+      if (resizeTimeout) {
+        window.cancelAnimationFrame(resizeTimeout);
+      }
       ctx.revert(); // Secure clean up memory leaks upon unmounting
     };
-  }, [loading]);
-
-  // Compute initial scale for oversized logo to occupy ~80vw
-  // The logo group (icon + text) is roughly 300px at natural size on desktop.
-  // We scale it so it fills ~80vw.
-  const getInitialScale = () => {
-    if (typeof window === "undefined") return 3;
-    const targetWidth = window.innerWidth * 0.8;
-    // Natural logo group width is approximately 280px (icon 96px + gap + text)
-    const naturalWidth = 280;
-    return Math.min(targetWidth / naturalWidth, 5);
-  };
+  }, [loading, resizeCanvasDimensions, drawFrameToCanvas]);
 
   return (
     <div className="relative w-full overflow-x-hidden">
@@ -260,19 +296,17 @@ export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHero
         >
           <div
             ref={heroLogoRef}
-            className="flex items-center gap-4"
             style={{
-              transform: `scale(${getInitialScale()})`,
+              transform: `scale(${logoScale})`,
               transformOrigin: "center center",
               willChange: "transform",
             }}
           >
-            <div className="w-24 h-24 rounded-2xl bg-clinic-teal flex items-center justify-center text-white shadow-lg shadow-clinic-teal/20">
-              <HeartPulse className="w-14 h-14" />
-            </div>
-            <span className="font-serif font-bold text-5xl tracking-tight text-navy-800 whitespace-nowrap">
-              Vet<span className="text-clinic-teal">Care</span>
-            </span>
+            <img
+              src="/images/logo.png"
+              alt="PawJoy Logo"
+              className="w-[280px] h-auto object-contain"
+            />
           </div>
         </div>
       )}
@@ -289,45 +323,45 @@ export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHero
           {/* Beat 1 Text */}
           <div
             ref={text1Ref}
-            className="absolute bottom-12 left-6 md:left-16 lg:left-24 max-w-md p-8 rounded-2xl glass-card shadow-lg opacity-0"
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md md:bottom-12 md:left-16 md:translate-x-0 md:w-auto p-5 md:p-8 rounded-2xl glass-card shadow-lg pointer-events-none opacity-0 text-center md:text-left"
           >
             <span className="text-xs font-semibold text-clinic-blue uppercase tracking-wider block mb-2">
               Empathetic Treatment
             </span>
-            <h2 className="font-serif font-bold text-2xl md:text-3xl text-navy-800 leading-snug">
+            <h2 className="font-serif font-bold text-2xl md:text-3xl lg:text-4xl text-navy-800 leading-snug">
               Comprehensive care for your best friend.
             </h2>
-            <div className="w-12 h-1 bg-clinic-teal mt-4 rounded-full"></div>
+            <div className="w-12 h-1 bg-clinic-teal mx-auto md:ml-0 mt-4 rounded-full"></div>
           </div>
 
           {/* Beat 2 Text */}
           <div
             ref={text2Ref}
-            className="absolute bottom-12 right-6 md:right-16 lg:right-24 max-w-md p-8 rounded-2xl glass-card shadow-lg text-right opacity-0"
+            className="absolute bottom-6 left-1/2 -translate-x-1/2 w-[calc(100%-2rem)] max-w-md md:bottom-12 md:right-16 md:left-auto md:translate-x-0 md:w-auto p-5 md:p-8 rounded-2xl glass-card shadow-lg pointer-events-none opacity-0 text-center md:text-right"
           >
             <span className="text-xs font-semibold text-clinic-teal uppercase tracking-wider block mb-2">
               Advanced Practice
             </span>
-            <h2 className="font-serif font-bold text-2xl md:text-3xl text-navy-800 leading-snug">
+            <h2 className="font-serif font-bold text-2xl md:text-3xl lg:text-4xl text-navy-800 leading-snug">
               Expert teams. State-of-the-art treatment.
             </h2>
-            <div className="w-12 h-1 bg-clinic-blue ml-auto mt-4 rounded-full"></div>
+            <div className="w-12 h-1 bg-clinic-blue mx-auto md:mr-0 md:ml-auto mt-4 rounded-full"></div>
           </div>
 
           {/* Beat 3 Text */}
           <div
             ref={text3Ref}
-            className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 pointer-events-auto opacity-0"
+            className="absolute inset-0 flex flex-col items-center justify-center text-center px-6 pb-[env(safe-area-inset-bottom)] pointer-events-none opacity-0"
           >
             <span className="text-xs font-semibold text-clinic-teal uppercase tracking-widest block mb-4">
               Our Promise
             </span>
-            <h2 className="font-serif font-bold text-4xl md:text-6xl text-white leading-tight max-w-3xl mb-8">
+            <h2 className="font-serif font-bold text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-white leading-tight max-w-xs sm:max-w-md md:max-w-2xl lg:max-w-3xl mb-8">
               Because they deserve better care.
             </h2>
             <a
               href="#contact"
-              className="group flex items-center gap-2 px-8 py-4 rounded-full border border-white text-white font-semibold text-lg hover:bg-white hover:text-navy-900 transition-all duration-300 shadow-xl shadow-black/10"
+              className="group pointer-events-auto flex items-center gap-2 px-8 py-4 rounded-full border border-white text-white font-semibold text-lg hover:bg-white hover:text-navy-900 transition-all duration-300 shadow-xl shadow-black/10"
             >
               Book Now
               <ArrowRight className="w-5 h-5 transition-transform duration-300 group-hover:translate-x-1" />
