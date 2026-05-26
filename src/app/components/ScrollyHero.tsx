@@ -119,33 +119,53 @@ export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHero
   useEffect(() => {
     let isMounted = true;
     const images: HTMLImageElement[] = [];
-    let loaded = 0;
 
-    const onFrameReady = () => {
+    // Prepopulate images array with empty Image objects so they exist at correct indices
+    for (let i = 1; i <= frameCount; i++) {
+      const img = new Image();
+      images.push(img);
+    }
+    preloadedImagesRef.current = images;
+
+    const startBackgroundPreload = () => {
+      let nextIndex = 2;
+      const loadNext = () => {
+        if (!isMounted || nextIndex > frameCount) return;
+        const currentToLoad = nextIndex++;
+        const img = images[currentToLoad - 1];
+        img.src = getFramePath(currentToLoad);
+        img.onload = loadNext;
+        img.onerror = loadNext;
+      };
+
+      // Start 5 concurrent background loading queues to speed up sequential download
+      const workers = 5;
+      for (let i = 0; i < workers; i++) {
+        loadNext();
+      }
+    };
+
+    // Load first frame immediately to unlock the preloader
+    const firstImg = images[0];
+    firstImg.src = getFramePath(1);
+
+    firstImg.onload = () => {
       if (!isMounted) return;
-      loaded++;
-      if (loaded === frameCount) {
-        preloadedImagesRef.current = images;
-        setFramesLoaded(true);
-      }
+      resizeCanvasDimensions();
+      setFramesLoaded(true);
+      startBackgroundPreload();
     };
 
-    const preloadImages = () => {
-      for (let i = 1; i <= frameCount; i++) {
-        const img = new Image();
-        img.src = getFramePath(i);
-        img.onload = onFrameReady;
-        img.onerror = onFrameReady;
-        images.push(img);
-      }
+    firstImg.onerror = () => {
+      if (!isMounted) return;
+      setFramesLoaded(true);
+      startBackgroundPreload();
     };
-
-    preloadImages();
 
     return () => {
       isMounted = false;
     };
-  }, []);
+  }, [resizeCanvasDimensions]);
 
   // Phase 2: Fly-to-navbar animation (triggers when all frames are loaded)
   useEffect(() => {
@@ -184,7 +204,7 @@ export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHero
       // Fade out loading text immediately when fly begins
       gsap.to(loadingText, {
         opacity: 0,
-        duration: 0.3,
+        duration: 0.25,
         ease: "power2.out",
       });
 
@@ -192,13 +212,14 @@ export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHero
         x: deltaX,
         y: deltaY,
         scale: scaleTarget,
-        duration: 1.2,
-        ease: "expo.inOut",
+        duration: 0.7,
+        ease: "power3.out",
         onComplete: () => {
           // Fade out the overlay background
           gsap.to(preloader, {
             opacity: 0,
-            duration: 0.3,
+            duration: 0.25,
+            ease: "power2.out",
             onComplete: () => {
               setLoading(false);
               onPreloaderDone();
