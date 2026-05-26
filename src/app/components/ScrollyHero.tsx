@@ -25,6 +25,7 @@ export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHero
   // Preloader refs
   const preloaderRef = useRef<HTMLDivElement>(null);
   const heroLogoRef = useRef<HTMLDivElement>(null);
+  const loadingTextRef = useRef<HTMLDivElement>(null);
 
   const [loading, setLoading] = useState(true);
   const [framesLoaded, setFramesLoaded] = useState(false);
@@ -153,7 +154,8 @@ export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHero
     const heroLogo = heroLogoRef.current;
     const navLogo = navLogoRef.current;
     const preloader = preloaderRef.current;
-    if (!heroLogo || !navLogo || !preloader) {
+    const loadingText = loadingTextRef.current;
+    if (!heroLogo || !navLogo || !preloader || !loadingText) {
       // Fallback: if refs are missing, just unmount
       setLoading(false);
       onPreloaderDone();
@@ -178,6 +180,13 @@ export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHero
 
       // Make overlay non-interactive during fly phase
       preloader.style.pointerEvents = "none";
+
+      // Fade out loading text immediately when fly begins
+      gsap.to(loadingText, {
+        opacity: 0,
+        duration: 0.3,
+        ease: "power2.out",
+      });
 
       gsap.to(heroLogo, {
         x: deltaX,
@@ -303,6 +312,17 @@ export default function ScrollyHero({ navLogoRef, onPreloaderDone }: ScrollyHero
               alt="PawJoy Logo"
               className="w-full h-full object-contain"
             />
+          </div>
+
+          {/* Loading Indicator centered under the logo */}
+          <div
+            ref={loadingTextRef}
+            className="absolute text-navy-800/60 dark:text-[#1A202C]/60 font-sans font-medium tracking-widest text-xs uppercase animate-pulse select-none"
+            style={{
+              transform: "translateY(160px)",
+            }}
+          >
+            Loading...
           </div>
         </div>
       )}
